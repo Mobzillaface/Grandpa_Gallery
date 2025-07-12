@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grandpa's Photo Gallery</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #1a1a1a;
+            margin: 0;
+            padding: 20px;
+            color: #fff;
+            text-align: center;
+        }
+        
+        h1 {
+            color: #ff6b6b;
+            margin-bottom: 20px;
+        }
+        
+        .gallery-container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        
+        .main-photo {
+            max-width: 100%;
+            max-height: 70vh;
+            border: 3px solid #444;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+        
+        .controls {
+            margin: 20px 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            background: #ff6b6b;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+        
+        .btn:hover {
+            background: #ff5252;
+            transform: scale(1.05);
+        }
+        
+        .btn-secondary {
+            background: #6b6bff;
+        }
+        
+        .btn-secondary:hover {
+            background: #5252ff;
+        }
+        
+        .counter {
+            font-size: 18px;
+            background: rgba(0,0,0,0.3);
+            padding: 8px 15px;
+            border-radius: 20px;
+            min-width: 80px;
+        }
+        
+        .date-info {
+            margin: 15px 0;
+            color: #aaa;
+            font-style: italic;
+        }
+        
+        .date-disclaimer {
+            font-size: 0.8em;
+            color: #777;
+            margin-top: 5px;
+        }
+        
+        .search-container {
+            margin: 20px 0;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .search-input {
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #444;
+            background: #333;
+            color: white;
+            min-width: 200px;
+        }
+        
+        .error-message {
+            color: #ff6b6b;
+            padding: 15px;
+            background: rgba(255,0,0,0.1);
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        
+        @media (max-width: 600px) {
+            .controls {
+                flex-direction: column;
+            }
+            .search-container {
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="gallery-container">
+        <h1>Grandpa's Photo Gallery</h1>
+        
+        <div id="errorMessage" class="error-message" style="display: none;"></div>
+        
+        <div class="search-container">
+            <input type="date" id="dateSearch" class="search-input" placeholder="Search by date">
+            <button id="searchBtn" class="btn btn-secondary">Search Date</button>
+            <button id="shuffleBtn" class="btn btn-secondary">Shuffle Photos</button>
+        </div>
+        
+        <img id="mainPhoto" class="main-photo" src="" alt="Loading photo...">
+        <div class="date-info">
+            <div id="dateDisplay"></div>
+            <div class="date-disclaimer">Dates may be inaccurate due to photo scanning or missing data.</div>
+        </div>
+        
+        <div class="controls">
+            <button id="prevBtn" class="btn">Previous</button>
+            <div id="photoCounter" class="counter">0/0</div>
+            <button id="nextBtn" class="btn">Next</button>
+        </div>
+    </div>
+
+    <script>
+        let currentIndex = 0;
+        let photos = [];
+        
+        const elements = {
+            mainPhoto: document.getElementById('mainPhoto'),
+            photoCounter: document.getElementById('photoCounter'),
+            prevBtn: document.getElementById('prevBtn'),
+            nextBtn: document.getElementById('nextBtn'),
+            dateDisplay: document.getElementById('dateDisplay'),
+            errorMessage: document.getElementById('errorMessage'),
+            dateSearch: document.getElementById('dateSearch'),
+            searchBtn: document.getElementById('searchBtn'),
+            shuffleBtn: document.getElementById('shuffleBtn')
+        };
+        
+        async function initGallery() {
+            showLoading();
+            
+            try {
+                const response = await fetch('photos.json');
+                if (!response.ok) throw new Error(`Server error: ${response.status}`);
+                
+                const data = await response.json();
+                photos = data.photos;
+                
+                if (!photos?.length) throw new Error('No photos found');
+                await testImageLoad(photos[0].path);
+                
+                currentIndex = 0;
+                updateGallery();
+            } catch (error) {
+                showError(`Failed to load gallery: ${error.message}`);
+                console.error('Gallery error:', error);
+            }
+        }
+        
+        function updateGallery() {
+            const photo = photos[currentIndex];
+            elements.mainPhoto.src = photo.path;
+            elements.photoCounter.textContent = `${currentIndex + 1}/${photos.length}`;
+            
+            if (photo.dateTaken) {
+                const date = new Date(photo.dateTaken);
+                elements.dateDisplay.textContent = `Taken on: ${date.toLocaleDateString()}`;
+                elements.dateSearch.value = photo.dateTaken;
+            } else {
+                elements.dateDisplay.textContent = 'Date information not available';
+            }
+        }
+        
+        function shufflePhotos() {
+            if (!photos.length) return;
+            currentIndex = Math.floor(Math.random() * photos.length);
+            updateGallery();
+        }
+        
+        function searchByDate() {
+            if (!photos.length || !elements.dateSearch.value) return;
+            
+            const searchDate = new Date(elements.dateSearch.value).getTime();
+            let closestIndex = 0;
+            let smallestDiff = Infinity;
+            
+            photos.forEach((photo, index) => {
+                if (!photo.dateTaken) return;
+                const photoDate = new Date(photo.dateTaken).getTime();
+                const diff = Math.abs(photoDate - searchDate);
+                if (diff < smallestDiff) {
+                    smallestDiff = diff;
+                    closestIndex = index;
+                }
+            });
+            
+            currentIndex = closestIndex;
+            updateGallery();
+        }
+        
+        function testImageLoad(url) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.onload = resolve;
+                img.onerror = () => reject(`Failed to load: ${url}`);
+                img.src = url;
+            });
+        }
+        
+        function showError(message) {
+            elements.errorMessage.textContent = message;
+            elements.errorMessage.style.display = 'block';
+        }
+        
+        function showLoading() {
+            elements.mainPhoto.alt = 'Loading...';
+            elements.photoCounter.textContent = 'Loading...';
+        }
+        
+        // Event listeners
+        elements.prevBtn.addEventListener('click', () => {
+            currentIndex = (currentIndex - 1 + photos.length) % photos.length;
+            updateGallery();
+        });
+        
+        elements.nextBtn.addEventListener('click', () => {
+            currentIndex = (currentIndex + 1) % photos.length;
+            updateGallery();
+        });
+        
+        elements.shuffleBtn.addEventListener('click', shufflePhotos);
+        elements.searchBtn.addEventListener('click', searchByDate);
+        
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft') elements.prevBtn.click();
+            if (e.key === 'ArrowRight') elements.nextBtn.click();
+            if (e.key === 's') shufflePhotos();
+        });
+        
+        document.addEventListener('DOMContentLoaded', initGallery);
+    </script>
+</body>
+</html>
