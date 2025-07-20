@@ -65,6 +65,14 @@
             background: #5252ff;
         }
         
+        .btn-video {
+            background: #ff0000;
+        }
+        
+        .btn-video:hover {
+            background: #cc0000;
+        }
+        
         .counter {
             font-size: 18px;
             background: rgba(0,0,0,0.3);
@@ -131,6 +139,7 @@
             <input type="date" id="dateSearch" class="search-input" placeholder="Search by date">
             <button id="searchBtn" class="btn btn-secondary">Search Date</button>
             <button id="shuffleBtn" class="btn btn-secondary">Shuffle Photos</button>
+            <button id="videoBtn" class="btn btn-video">Mass Video</button>
         </div>
         
         <img id="mainPhoto" class="main-photo" src="" alt="Loading photo...">
@@ -159,7 +168,8 @@
             errorMessage: document.getElementById('errorMessage'),
             dateSearch: document.getElementById('dateSearch'),
             searchBtn: document.getElementById('searchBtn'),
-            shuffleBtn: document.getElementById('shuffleBtn')
+            shuffleBtn: document.getElementById('shuffleBtn'),
+            videoBtn: document.getElementById('videoBtn')
         };
         
         async function initGallery() {
@@ -256,6 +266,11 @@
         
         elements.shuffleBtn.addEventListener('click', shufflePhotos);
         elements.searchBtn.addEventListener('click', searchByDate);
+        
+        elements.videoBtn.addEventListener('click', () => {
+            // Replace this YouTube video ID with your desired video
+            window.location.href = 'https://www.youtube.com/watch?v=zar8PA8MsLQ';
+        });
         
         document.addEventListener('keydown', (e) => {
             if (e.key === 'ArrowLeft') elements.prevBtn.click();
